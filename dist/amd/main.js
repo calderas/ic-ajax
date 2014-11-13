@@ -76,6 +76,9 @@ define(
       return new Ember.RSVP.Promise(function(resolve, reject) {
         var fixture = lookupFixture(settings.url);
         if (fixture) {
+          if (fixture.onSend) {
+            fixture.onSend(settings);
+          }
           if (fixture.textStatus === 'success' || fixture.textStatus == null) {
             return Ember.run.later(null, resolve, fixture);
           } else {
