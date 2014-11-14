@@ -106,6 +106,38 @@ asyncTest('the fixture jqXHR survives the response copy', function() {
   )
 });
 
+asyncTest('adds onSend callback option to inspect xhr settings', function() {
+
+  var xhrRequests = [];
+
+  ic.ajax.defineFixture('/post', {
+    response: {},
+    textStatus: 'success',
+    jqXHR: {},
+    onSend: function(settings) {
+      xhrRequests.push(settings);
+    }
+  });
+
+  var req = {
+    type: "POST",
+    contentType: "application/json",
+    dataType: "json",
+    url: "/post",
+    data: JSON.stringify({
+      foo: "bar"
+    })
+  };
+
+  Ember.RSVP.all([ic.ajax.request(req), ic.ajax.request(req)])
+    .then(function() {
+      start();
+      equal(xhrRequests.length, 2);
+      var payload = JSON.parse(xhrRequests[0].data);
+      equal(payload.foo, "bar");
+    });
+});
+
 test('throws if success or error callbacks are used', function() {
   var k = function() {};
   throws(function() {
