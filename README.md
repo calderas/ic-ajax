@@ -77,6 +77,7 @@ In order to test newly added code you must rebuild the distribution.
 broccoli build dist
 ```
 
+### defineFixture
 Adding fixtures with `defineFixture` tells ic-ajax to resolve the promise
 with the fixture matching a url instead of making a request. This allows
 you to test your app without creating fake servers with sinon, etc.
@@ -96,6 +97,44 @@ ic.ajax.request('api/v1/courses').then(function(result) {
 ```
 
 To test failure paths, set the `textStatus` to anything but `success`.
+
+To set a fixture that will match every url with a matching path, regardless of the query string, add an options object as a parameter to `defineFixture` with a property of `fallback` set to true. A fixture will be located for the specific url with a query string, and if no fixture is found, the fallback that matches the path (not considering the query string) will be used.
+
+Example:
+
+```js
+ic.ajax.defineFixture('api/v1/courses', {
+  response: [{name: 'basket weaving'}],
+  jqXHR: {},
+  textStatus: 'success'
+}, {
+  fallback: true
+});
+
+ic.ajax.request('api/v1/courses?this=that').then(function(result) {
+  deepEqual(result, ic.ajax.lookupFixture('api/v1/courses').response);
+});
+```
+
+### lookupFixture
+Lookup a fixture. If successful, the fixture will be returned, otherwise `undefined` will be returned.
+
+```js
+var coursesFixture = ic.ajax.lookupFixture('api/v1/courses');
+```
+
+### removeFixture
+Remove a specific fixture. Pass in the url, the fixture that matches that url, if any, will be removed.
+
+```js
+ic.ajax.removeFixture('api/v1/courses');
+```
+
+### removeAllFixtures
+
+```js
+ic.ajax.removeAllFixtures();
+```
 
 
 Contributing
