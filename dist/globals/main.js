@@ -34,7 +34,8 @@ function raw() {
 }
 
 exports.raw = raw;var __fixtures__ = {};
-exports.__fixtures__ = __fixtures__;
+exports.__fixtures__ = __fixtures__;var __fallbackFixtures__ = {};
+exports.__fallbackFixtures__ = __fallbackFixtures__;
 /*
  * Defines a fixture that will be used instead of an actual ajax
  * request to a given url. This is useful for testing, allowing you to
@@ -47,17 +48,25 @@ exports.__fixtures__ = __fixtures__;
  *      response: { firstName: 'Ryan', lastName: 'Florence' },
  *      textStatus: 'success'
  *      jqXHR: {}
+ *    }, {
+ *      fallback: true
  *    });
  *
  * @param {String} url
  * @param {Object} fixture
+ * @param {Object} [options] - options for the fixture
+ * @param {boolean} [options.fallback=false] - whether or not the fixture should be used for all routes with a matching path that do not have a fixture matching their query string
  */
 
-function defineFixture(url, fixture) {
+function defineFixture(url, fixture, options) {
   if (fixture.response) {
     fixture.response = JSON.parse(JSON.stringify(fixture.response));
   }
   __fixtures__[url] = fixture;
+
+  if (options && options.fallback) {
+    __fallbackFixtures__[url] = fixture;
+  }
 }
 
 exports.defineFixture = defineFixture;/*
@@ -67,14 +76,38 @@ exports.defineFixture = defineFixture;/*
  */
 
 function lookupFixture (url) {
-  return __fixtures__ && __fixtures__[url];
+  var fixture = __fixtures__ && __fixtures__[url];
+
+  if (!fixture && typeof url === "string" && url.match(/\?/)) {
+    fixture = __fallbackFixtures__ && __fallbackFixtures__[url.split("?")[0]];
+  }
+
+  return fixture;
 }
 
-exports.lookupFixture = lookupFixture;function makePromise(settings) {
+exports.lookupFixture = lookupFixture;/*
+ * Removes a fixture by url.
+ *
+ * @param {String} url
+ */
+function removeFixture (url) {
+  delete __fixtures__[url];
+  delete __fallbackFixtures__[url];
+}
+
+exports.removeFixture = removeFixture;/*
+ * Removes all fixtures.
+ */
+function removeAllFixtures () {
+  __fixtures__ = {};
+  __fallbackFixtures__ = {};
+}
+
+exports.removeAllFixtures = removeAllFixtures;function makePromise(settings) {
   return new Ember.RSVP.Promise(function(resolve, reject) {
     var fixture = lookupFixture(settings.url);
     if (fixture) {
-      if (fixture.onSend) {
+      if (fixture.onSend && typeof fixture.onSend === "function") {
         fixture.onSend(settings);
       }
       if (fixture.textStatus === 'success' || fixture.textStatus == null) {
