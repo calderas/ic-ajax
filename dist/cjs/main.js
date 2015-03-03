@@ -98,11 +98,19 @@ exports.removeFixture = removeFixture;/*
  * Removes all fixtures.
  */
 function removeAllFixtures () {
-  __fixtures__ = {};
-  __fallbackFixtures__ = {};
+  emptyObject(__fixtures__);
+  emptyObject(__fallbackFixtures__);
 }
 
-exports.removeAllFixtures = removeAllFixtures;function makePromise(settings) {
+exports.removeAllFixtures = removeAllFixtures;function emptyObject(obj) {
+  for (var i in obj) {
+    if (obj.hasOwnProperty(i)) {
+      delete obj[i];
+    }
+  }
+}
+
+function makePromise(settings) {
   return new Ember.RSVP.Promise(function(resolve, reject) {
     var fixture = lookupFixture(settings.url);
     if (fixture) {
