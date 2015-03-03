@@ -1,7 +1,58 @@
-module('ic-ajax');
+module('ic-ajax', {
+  teardown: function() {
+    ic.ajax.removeAllFixtures();
+  }
+});
 
 test('presence', function() {
   ok(ic.ajax, 'ic.ajax is defined');
+});
+
+test('finds fixtures', function() {
+  ic.ajax.defineFixture('/get', {
+    response: { foo: 'bar' },
+    textStatus: 'success',
+    jqXHR: {}
+  });
+
+  ok(ic.ajax.lookupFixture('/get'));
+});
+
+test('removes fixtures', function() {
+  ic.ajax.defineFixture('/get', {
+    response: { foo: 'bar' },
+    textStatus: 'success',
+    jqXHR: {}
+  });
+  ic.ajax.defineFixture('/post', {
+    errorThrown: 'Unprocessable Entity',
+    textStatus: 'error',
+    jqXHR: {}
+  });
+
+  ok(ic.ajax.lookupFixture('/get'));
+  ic.ajax.removeFixture('/get');
+  ok(!ic.ajax.lookupFixture('/get'));
+  ok(ic.ajax.lookupFixture('/post'));
+});
+
+test('removes all fixtures', function() {
+  ic.ajax.defineFixture('/get', {
+    response: { foo: 'bar' },
+    textStatus: 'success',
+    jqXHR: {}
+  });
+  ic.ajax.defineFixture('/post', {
+    errorThrown: 'Unprocessable Entity',
+    textStatus: 'error',
+    jqXHR: {}
+  });
+
+  ok(ic.ajax.lookupFixture('/get'));
+  ok(ic.ajax.lookupFixture('/post'));
+  ic.ajax.removeAllFixtures();
+  ok(!ic.ajax.lookupFixture('/get'));
+  ok(!ic.ajax.lookupFixture('/post'));
 });
 
 asyncTest('pulls from fixtures', function() {
@@ -15,6 +66,57 @@ asyncTest('pulls from fixtures', function() {
     start();
     deepEqual(result, ic.ajax.lookupFixture('/get'));
   });
+});
+
+asyncTest('uses a designated fallback fixture if no fixture is found for a request with a query string', function() {
+  ic.ajax.defineFixture('/get', {
+    response: { foo: 'bar' },
+    textStatus: 'success',
+    jqXHR: {}
+  }, {
+    fallback: true
+  });
+
+  ok(ic.ajax.lookupFixture('/get?this=that'));
+  ic.ajax.raw('/get?this=that').then(function(result) {
+    start();
+    deepEqual(result, ic.ajax.lookupFixture('/get'));
+  });
+});
+
+asyncTest('does not use a designated fallback fixture if a fixture is found for a request matching its query string', function() {
+  var queryStringResponse = { foo: 'baz'};
+
+  ic.ajax.defineFixture('/get', {
+    response: { foo: 'bar' },
+    textStatus: 'success',
+    jqXHR: {}
+  }, {
+    fallback: true
+  });
+
+  ic.ajax.defineFixture('/get?this=that', {
+    response: queryStringResponse,
+    textStatus: 'success',
+    jqXHR: {}
+  });
+
+  ic.ajax.raw('/get?this=that').then(function(result) {
+    start();
+    deepEqual(result.response, queryStringResponse);
+  });
+});
+
+test('does not set a fixture as a fallback fixture if `fallback` is not set to true in the options', function() {
+  var queryStringResponse = { foo: 'baz'};
+
+  ic.ajax.defineFixture('/get', {
+    response: { foo: 'bar' },
+    textStatus: 'success',
+    jqXHR: {}
+  });
+
+  ok(!ic.ajax.lookupFixture('/get?this=that'));
 });
 
 asyncTest('rejects the promise when the textStatus of the fixture is not success', function() {
