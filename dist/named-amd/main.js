@@ -209,7 +209,7 @@ define("ic-ajax",
       var args = Array.prototype.slice.call(arguments),
         settings;
 
-      if (args[1] === "string") {
+      if (typeof args[1] === "string") {
         settings = args[2] || {};
         settings.url = args[0];
         settings.type = args[1];

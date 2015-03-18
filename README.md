@@ -99,6 +99,32 @@ ic.ajax.request('api/v1/courses').then(function(result) {
 
 To test failure paths, set the `textStatus` to anything but `success`.
 
+You may also define the request types that this fixture will respond to, by including an array of types as an optional second argument. If there are two fixtures for the same URL, but one has a types array of `['POST', 'PUT']` while the other has none, then all calls with the type `POST` or `PUT` will match the more specific fixture, while the others will match the fixture with no types specified.
+
+Example:
+
+```js
+ic.ajax.defineFixture('api/v1/courses', ['POST', 'PUT'], {
+  response: [{name: 'Samoan Literature'}],
+  jqXHR: {},
+  textStatus: 'success'
+});
+
+ic.ajax.defineFixture('api/v1/courses', {
+  response: [{name: 'basket weaving'}],
+  jqXHR: {},
+  textStatus: 'success'
+});
+
+ic.ajax.request('api/v1/courses', 'GET').then(function(result) {
+  deepEqual(result, [{name: 'basket weaving'}]);
+});
+
+ic.ajax.request('api/v1/courses', 'POST').then(function(result) {
+  deepEqual(result, [{name: 'Samoan Literature'}]);
+});
+```
+
 #### Options
 You may pass an options object as the second argument to `defineFixture`, which may have the following properties:
 
