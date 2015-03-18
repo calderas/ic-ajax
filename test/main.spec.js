@@ -268,7 +268,6 @@ asyncTest('records callCount, args, and url to fixtureData', function() {
   },
   firstTest = ic.ajax.request(req1)
     .then(function() {
-      console.log("first");
       equal(fixture.url, '/post', 'The fixture url is included with the fixture data');
       equal(fixture.callCount, 1, 'The callCount has been incremented');
       equal(fixture.args.length, 1, 'The args array has one set of args');
