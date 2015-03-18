@@ -34,8 +34,7 @@ function raw() {
 }
 
 exports.raw = raw;var __fixtures__ = {};
-exports.__fixtures__ = __fixtures__;var __fallbackFixtures__ = {};
-exports.__fallbackFixtures__ = __fallbackFixtures__;
+exports.__fixtures__ = __fixtures__;
 /*
  * Defines a fixture that will be used instead of an actual ajax
  * request to a given url. This is useful for testing, allowing you to
@@ -62,11 +61,13 @@ function defineFixture(url, fixture, options) {
   if (fixture.response) {
     fixture.response = JSON.parse(JSON.stringify(fixture.response));
   }
-  __fixtures__[url] = fixture;
-
-  if (options && options.fallback) {
-    __fallbackFixtures__[url] = fixture;
-  }
+  return __fixtures__[url] = {
+    fixture: fixture,
+    options: options || {},
+    args: [],
+    callCount: 0,
+    url: url
+  };
 }
 
 exports.defineFixture = defineFixture;/*
@@ -76,10 +77,14 @@ exports.defineFixture = defineFixture;/*
  */
 
 function lookupFixture (url) {
-  var fixture = __fixtures__ && __fixtures__[url];
+  var fixture = __fixtures__[url],
+    path;
 
   if (!fixture && typeof url === "string" && url.match(/\?/)) {
-    fixture = __fallbackFixtures__ && __fallbackFixtures__[url.split("?")[0]];
+    path = url.split("?")[0]
+    if (__fixtures__[path] && __fixtures__[path].options.fallback) {
+      fixture = __fixtures__[path];
+    }
   }
 
   return fixture;
@@ -92,7 +97,6 @@ exports.lookupFixture = lookupFixture;/*
  */
 function removeFixture (url) {
   delete __fixtures__[url];
-  delete __fallbackFixtures__[url];
 }
 
 exports.removeFixture = removeFixture;/*
@@ -100,7 +104,6 @@ exports.removeFixture = removeFixture;/*
  */
 function removeAllFixtures () {
   emptyObject(__fixtures__);
-  emptyObject(__fallbackFixtures__);
 }
 
 exports.removeAllFixtures = removeAllFixtures;function emptyObject(obj) {
@@ -113,10 +116,16 @@ exports.removeAllFixtures = removeAllFixtures;function emptyObject(obj) {
 
 function makePromise(settings) {
   return new Ember.RSVP.Promise(function(resolve, reject) {
-    var fixture = lookupFixture(settings.url);
+    var fixtureData = lookupFixture(settings.url),
+      fixture = fixtureData ? fixtureData.fixture : undefined,
+      options = fixtureData ? fixtureData.options : {};
+
     if (fixture) {
-      if (fixture.onSend && typeof fixture.onSend === "function") {
-        fixture.onSend(settings);
+      fixtureData.callCount += 1;
+      fixtureData.args.push(settings);
+
+      if (options.onSend && typeof options.onSend === "function") {
+        options.onSend(settings);
       }
       if (fixture.textStatus === 'success' || fixture.textStatus == null) {
         return Ember.run.later(null, resolve, fixture);
