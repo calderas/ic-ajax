@@ -134,7 +134,7 @@ exports.removeFixture = removeFixture;/*
  * Removes all fixtures.
  */
 function removeAllFixtures () {
-  emptyObject(__fixtures__);
+  emptyFixtureTypes(__fixtures__);
   __fixtures__['all'] = {};
 }
 
@@ -162,13 +162,15 @@ function lookupFixtureByType (url, type) {
   return fixtureData;
 }
 
-function emptyObject(obj) {
-  for (var i in obj) {
-    if (obj.hasOwnProperty(i)) {
-      if (typeof obj[i] === 'object') {
-        emptyObject(obj[i]);
+function emptyFixtureTypes(obj) {
+  for (var type in obj) {
+    if (obj.hasOwnProperty(type)) {
+      for (var i in obj[type]) {
+        if (obj[type].hasOwnProperty(i)) {
+          delete obj[type][i];
+        }
       }
-      delete obj[i];
+      delete obj[type];
     }
   }
 }
