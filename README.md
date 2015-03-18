@@ -76,11 +76,12 @@ In order to test newly added code you must rebuild the distribution.
 ```bash
 broccoli build dist
 ```
+<hr/>
 
 ### defineFixture
 Adding fixtures with `defineFixture` tells ic-ajax to resolve the promise
 with the fixture matching a url instead of making a request. This allows
-you to test your app without creating fake servers with sinon, etc.
+you to test your app without creating fake servers with sinon, etc. `defineFixture` will return a fixtureData object which will store data about your fixture.
 
 Example:
 
@@ -97,8 +98,6 @@ ic.ajax.request('api/v1/courses').then(function(result) {
 ```
 
 To test failure paths, set the `textStatus` to anything but `success`.
-
-<hr/>
 
 #### Options
 You may pass an options object as the second argument to `defineFixture`, which may have the following properties:
@@ -150,16 +149,18 @@ ic.ajax.defineFixture('api/v1/courses', {
 equal(deleteCount, 1, 'the thing was deleted');
 ```
 
-<hr/>
-
 ####fixtureData
 
 `defineFixture` will return a fixtureData object with the following properties:
 
 _fixture_ - Object - The fixture you defined
+
 _options_ - Object - The options you passed in for the fixture
+
 _args_ - Array of Objects - The settings passed for every ajax call that matched this fixture, in the order the calls were made
+
 _callCount_ - Number - The number of times this fixture was called.
+
 _url_ - String - The url that this fixture matches
 
 These properties will stay updated as the fixture is used.
@@ -181,12 +182,16 @@ ic.ajax.request('api/v1/courses?this=that').then(function(result) {
 });
 ```
 
+<hr/>
+
 ### lookupFixture
-Lookup a fixture. If successful, the fixture will be returned, otherwise `undefined` will be returned.
+Lookup a fixture. If successful, a fixtureData object will be returned, otherwise `undefined` will be returned.
 
 ```js
 var coursesFixture = ic.ajax.lookupFixture('api/v1/courses');
 ```
+
+<hr/>
 
 ### removeFixture
 Remove a specific fixture. Pass in the url, the fixture that matches that url, if any, will be removed.
@@ -195,11 +200,15 @@ Remove a specific fixture. Pass in the url, the fixture that matches that url, i
 ic.ajax.removeFixture('api/v1/courses');
 ```
 
+<hr/>
+
 ### removeAllFixtures
 
 ```js
 ic.ajax.removeAllFixtures();
 ```
+
+<hr/>
 
 
 Contributing

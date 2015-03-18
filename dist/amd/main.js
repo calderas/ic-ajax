@@ -79,17 +79,17 @@ define(
      */
 
     function lookupFixture (url) {
-      var fixture = __fixtures__[url],
+      var fixtureData = __fixtures__[url],
         path;
 
-      if (!fixture && typeof url === "string" && url.match(/\?/)) {
+      if (!fixtureData && typeof url === "string" && url.match(/\?/)) {
         path = url.split("?")[0]
         if (__fixtures__[path] && __fixtures__[path].options.fallback) {
-          fixture = __fixtures__[path];
+          fixtureData = __fixtures__[path];
         }
       }
 
-      return fixture;
+      return fixtureData;
     }
 
     __exports__.lookupFixture = lookupFixture;/*
