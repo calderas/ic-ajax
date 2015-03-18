@@ -81,7 +81,7 @@ broccoli build dist
 ### defineFixture
 Adding fixtures with `defineFixture` tells ic-ajax to resolve the promise
 with the fixture matching a url instead of making a request. This allows
-you to test your app without creating fake servers with sinon, etc. `defineFixture` will return a fixtureData object which will store data about your fixture.
+you to test your app without creating fake servers with sinon, etc. `defineFixture` will return a FixtureData object which will store data about your fixture.
 
 Example:
 
@@ -149,9 +149,9 @@ ic.ajax.defineFixture('api/v1/courses', {
 equal(deleteCount, 1, 'the thing was deleted');
 ```
 
-####fixtureData
+####FixtureData
 
-`defineFixture` will return a fixtureData object with the following properties:
+`defineFixture` will return a FixtureData object with the following properties:
 
 _fixture_ - Object - The fixture you defined
 
@@ -185,7 +185,7 @@ ic.ajax.request('api/v1/courses?this=that').then(function(result) {
 <hr/>
 
 ### lookupFixture
-Lookup a fixture. If successful, a fixtureData object will be returned, otherwise `undefined` will be returned.
+Lookup a fixture. If successful, a FixtureData object will be returned, otherwise `undefined` will be returned.
 
 ```js
 var coursesFixture = ic.ajax.lookupFixture('api/v1/courses');

@@ -54,25 +54,26 @@ exports.__fixtures__ = __fixtures__;
  * @param {Object} fixture
  * @param {Object} [options] - options for the fixture
  * @param {boolean} [options.fallback=false] - whether or not the fixture should be used for all routes with a matching path that do not have a fixture matching their query string
+ * @param {boolean} [options.onSend] - a function that will be executed before the fixture is sent, this function will receive the settings of the ajax call it intercepts as its only argument
+ * @return {FixtureData} The new FixtureData object
  */
 
 function defineFixture(url, fixture, options) {
   if (fixture.response) {
     fixture.response = JSON.parse(JSON.stringify(fixture.response));
   }
-  return __fixtures__[url] = {
+  return __fixtures__[url] = new FixtureData({
     fixture: fixture,
-    options: options || {},
-    args: [],
-    callCount: 0,
+    options: options,
     url: url
-  };
+  });
 }
 
 exports.defineFixture = defineFixture;/*
  * Looks up a fixture by url.
  *
  * @param {String} url
+ * @return {FixtureData} The matching FixtureData object
  */
 
 function lookupFixture (url) {
@@ -105,7 +106,15 @@ function removeAllFixtures () {
   emptyObject(__fixtures__);
 }
 
-exports.removeAllFixtures = removeAllFixtures;function emptyObject(obj) {
+exports.removeAllFixtures = removeAllFixtures;function FixtureData(data) {
+  this.fixture = data.fixture;
+  this.options = data.options || {};
+  this.args = [];
+  this.callCount = 0;
+  this.url = data.url;
+}
+
+function emptyObject(obj) {
   for (var i in obj) {
     if (obj.hasOwnProperty(i)) {
       delete obj[i];
