@@ -76,9 +76,9 @@ In order to test newly added code you must rebuild the distribution.
 ```bash
 broccoli build dist
 ```
-<hr/>
 
 ### defineFixture
+<hr/>
 Adding fixtures with `defineFixture` tells ic-ajax to resolve the promise
 with the fixture matching a url instead of making a request. This allows
 you to test your app without creating fake servers with sinon, etc. `defineFixture` will return a FixtureData object which will store data about your fixture.
@@ -124,6 +124,8 @@ ic.ajax.request('api/v1/courses', 'POST').then(function(result) {
   deepEqual(result, [{name: 'Samoan Literature'}]);
 });
 ```
+
+*Fixtures that have request types will never match requests that do not have a matching type, while fixtures that do not define a request type will match all types. A fixture will match from most specific to least specific. A fixture that matches the exact url with query string and the request type has precedence over one that matches the query string but doesn't have a request type. These both have precedence over a "fallback" fixture that matches the path and the type, and last is a "fallback" fixture which matches the path and has no type.*
 
 #### Options
 You may pass an options object as the second argument to `defineFixture`, which may have the following properties:
@@ -208,33 +210,28 @@ ic.ajax.request('api/v1/courses?this=that').then(function(result) {
 });
 ```
 
-<hr/>
-
 ### lookupFixture
+<hr/>
 Lookup a fixture. If successful, a FixtureData object will be returned, otherwise `undefined` will be returned.
 
 ```js
 var coursesFixture = ic.ajax.lookupFixture('api/v1/courses');
 ```
 
-<hr/>
-
 ### removeFixture
+<hr/>
 Remove a specific fixture. Pass in the url, the fixture that matches that url, if any, will be removed.
 
 ```js
 ic.ajax.removeFixture('api/v1/courses');
 ```
 
-<hr/>
-
 ### removeAllFixtures
+<hr/>
 
 ```js
 ic.ajax.removeAllFixtures();
 ```
-
-<hr/>
 
 
 Contributing
