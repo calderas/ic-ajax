@@ -83,6 +83,9 @@ function defineFixture(url, types, fixture, options) {
 
   if (types.length) {
     for (var i=0;i<types.length;i++) {
+      if (!__fixtures__.hasOwnProperty(types[i])) {
+        __fixtures__[types[i]] = {};
+      }
       __fixtures__[types[i]][url] = fixtureData;
     }
   } else {
