@@ -98,6 +98,13 @@ ic.ajax.request('api/v1/courses').then(function(result) {
 
 To test failure paths, set the `textStatus` to anything but `success`.
 
+<hr/>
+
+#### Options
+You may pass an options object as the second argument to `defineFixture`, which may have the following properties:
+
+_fallback_ - (Boolean, optional, default: `false`)
+
 To set a fixture that will match every url with a matching path, regardless of the query string, add an options object as a parameter to `defineFixture` with a property of `fallback` set to true. A fixture will be located for the specific url with a query string, and if no fixture is found, the fallback that matches the path (not considering the query string) will be used.
 
 Example:
@@ -113,6 +120,64 @@ ic.ajax.defineFixture('api/v1/courses', {
 
 ic.ajax.request('api/v1/courses?this=that').then(function(result) {
   deepEqual(result, ic.ajax.lookupFixture('api/v1/courses').response);
+});
+```
+
+
+_onSend_ - (Function, optional)
+
+To execute a callback just before the fixture returns, pass the options object into `defineFixture` and include the callback in the `onSend` property. This callback will receive the settings object of the intercepted ajax call as its only argument.
+
+Example:
+
+```js
+var deleteCount = 0;
+
+ic.ajax.defineFixture('api/v1/courses', {
+  response: [{name: 'basket weaving'}],
+  jqXHR: {},
+  textStatus: 'success'
+}, {
+  onSend: function(settings) {
+    if (settings.type === 'Delete') {
+      deleteCount += 1;
+    }
+  }
+});
+
+// do some stuff that triggers a DELETE
+
+equal(deleteCount, 1, 'the thing was deleted');
+```
+
+<hr/>
+
+####fixtureData
+
+`defineFixture` will return a fixtureData object with the following properties:
+
+_fixture_ - Object - The fixture you defined
+_options_ - Object - The options you passed in for the fixture
+_args_ - Array of Objects - The settings passed for every ajax call that matched this fixture, in the order the calls were made
+_callCount_ - Number - The number of times this fixture was called.
+_url_ - String - The url that this fixture matches
+
+These properties will stay updated as the fixture is used.
+
+Example:
+
+```js
+var fixie = ic.ajax.defineFixture('api/v1/courses', {
+  response: [{name: 'basket weaving'}],
+  jqXHR: {},
+  textStatus: 'success'
+}, {
+  fallback: true
+});
+
+ic.ajax.request('api/v1/courses?this=that').then(function(result) {
+  equal(fixie.callCount, 1);
+  deepEqual(fixie.args, {url: 'api/v1/courses?this=that'});
 });
 ```
 
