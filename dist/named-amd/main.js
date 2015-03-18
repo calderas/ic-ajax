@@ -35,9 +35,10 @@ define("ic-ajax",
       return makePromise(parseArgs.apply(null, arguments));
     }
 
-    __exports__.raw = raw;var __fixtures__ = {};
-    __exports__.__fixtures__ = __fixtures__;var __fallbackFixtures__ = {};
-    __exports__.__fallbackFixtures__ = __fallbackFixtures__;
+    __exports__.raw = raw;var __fixtures__ = {
+      all: {}
+    };
+    __exports__.__fixtures__ = __fixtures__;
     /*
      * Defines a fixture that will be used instead of an actual ajax
      * request to a given url. This is useful for testing, allowing you to
@@ -56,69 +57,141 @@ define("ic-ajax",
      *
      * @param {String} url
      * @param {Object} fixture
+     * @param {Array} [types] - which request types (GET, POST, etc.) this fixture will match. If this array is not provided or is empty, the fixture will match all types.
      * @param {Object} [options] - options for the fixture
      * @param {boolean} [options.fallback=false] - whether or not the fixture should be used for all routes with a matching path that do not have a fixture matching their query string
+     * @param {boolean} [options.onSend] - a function that will be executed before the fixture is sent, this function will receive the settings of the ajax call it intercepts as its only argument
+     * @return {FixtureData} The new FixtureData object
      */
 
-    function defineFixture(url, fixture, options) {
+    function defineFixture(url, types, fixture, options) {
+      var fixtureData;
+
+      if (!Array.isArray(types)) {
+        options = fixture;
+        fixture = types;
+        types = [];
+      }
+
       if (fixture.response) {
         fixture.response = JSON.parse(JSON.stringify(fixture.response));
       }
-      __fixtures__[url] = fixture;
 
-      if (options && options.fallback) {
-        __fallbackFixtures__[url] = fixture;
+      fixtureData = new FixtureData({
+        fixture: fixture,
+        options: options,
+        types: types,
+        url: url
+      });
+
+      if (types.length) {
+        for (var i=0;i<types.length;i++) {
+          if (!__fixtures__.hasOwnProperty(types[i])) {
+            __fixtures__[types[i]] = {};
+          }
+          __fixtures__[types[i]][url] = fixtureData;
+        }
+      } else {
+        __fixtures__['all'][url] = fixtureData;
       }
+
+      return fixtureData;
     }
 
     __exports__.defineFixture = defineFixture;/*
      * Looks up a fixture by url.
      *
      * @param {String} url
+     * @param {string} [type] - 'GET' or 'POST', etc (optional)
+     * @return {FixtureData} The matching FixtureData object
      */
 
-    function lookupFixture (url) {
-      var fixture = __fixtures__ && __fixtures__[url];
+    function lookupFixture (url, type) {
+      var fixtureData = lookupFixtureByType(url, 'all'),
+        exactMatch = lookupFixtureByType(url, type);
 
-      if (!fixture && typeof url === "string" && url.match(/\?/)) {
-        fixture = __fallbackFixtures__ && __fallbackFixtures__[url.split("?")[0]];
+      if (exactMatch) {
+        fixtureData = exactMatch;
       }
 
-      return fixture;
+      return fixtureData;
     }
 
     __exports__.lookupFixture = lookupFixture;/*
      * Removes a fixture by url.
      *
      * @param {String} url
+     * @param {Array} types - array of types to
      */
-    function removeFixture (url) {
-      delete __fixtures__[url];
-      delete __fallbackFixtures__[url];
+    function removeFixture (url, types) {
+      if (types && types.length) {
+        for (var i=0;i<types.length;i++) {
+          if (__fixtures__[types[i]]) {
+            delete __fixtures__[types[i]][url];
+          }
+        }
+      } else {
+        delete __fixtures__['all'][url];
+      }
     }
 
     __exports__.removeFixture = removeFixture;/*
      * Removes all fixtures.
      */
     function removeAllFixtures () {
-      emptyObject(__fixtures__);
-      emptyObject(__fallbackFixtures__);
+      emptyFixtureTypes(__fixtures__);
+      __fixtures__['all'] = {};
     }
 
-    __exports__.removeAllFixtures = removeAllFixtures;function emptyObject(obj) {
-      for (var i in obj) {
-        if (obj.hasOwnProperty(i)) {
-          delete obj[i];
+    __exports__.removeAllFixtures = removeAllFixtures;function FixtureData(data) {
+      this.fixture = data.fixture;
+      this.options = data.options || {};
+      this.args = [];
+      this.callCount = 0;
+      this.types = data.types;
+      this.url = data.url;
+    }
+
+    function lookupFixtureByType (url, type) {
+      var typeDataStore = __fixtures__[type] || {},
+        fixtureData = typeDataStore[url],
+        path;
+
+      if (!fixtureData && typeof url === "string" && url.match(/\?/)) {
+        path = url.split("?")[0]
+        if (typeDataStore[path] && typeDataStore[path].options.fallback) {
+          fixtureData = typeDataStore[path];
+        }
+      }
+
+      return fixtureData;
+    }
+
+    function emptyFixtureTypes(obj) {
+      for (var type in obj) {
+        if (obj.hasOwnProperty(type)) {
+          for (var i in obj[type]) {
+            if (obj[type].hasOwnProperty(i)) {
+              delete obj[type][i];
+            }
+          }
+          delete obj[type];
         }
       }
     }
 
     function makePromise(settings) {
       return new Ember.RSVP.Promise(function(resolve, reject) {
-        var fixture = lookupFixture(settings.url);
+        var fixtureData = lookupFixture(settings.url, settings.type),
+          fixture = fixtureData ? fixtureData.fixture : undefined,
+          options = fixtureData ? fixtureData.options : {};
+
         if (fixture) {
-          if (fixture.onSend && typeof fixture.onSend === "function") {
-            fixture.onSend(settings);
+          fixtureData.callCount += 1;
+          fixtureData.args.push(settings);
+
+          if (options.onSend && typeof options.onSend === "function") {
+            options.onSend(settings);
           }
           if (fixture.textStatus === 'success' || fixture.textStatus == null) {
             return Ember.run.later(null, resolve, fixture);
@@ -129,21 +202,26 @@ define("ic-ajax",
         settings.success = makeSuccess(resolve);
         settings.error = makeError(reject);
         Ember.$.ajax(settings);
-      }, 'ic-ajax: ' + (settings.type || 'GET') + ' to ' + settings.url);
+      }, 'ic-ajax: ' + settings.type + ' to ' + settings.url);
     };
 
     function parseArgs() {
-      var settings = {};
-      if (arguments.length === 1) {
-        if (typeof arguments[0] === "string") {
-          settings.url = arguments[0];
-        } else {
-          settings = arguments[0];
-        }
-      } else if (arguments.length === 2) {
-        settings = arguments[1];
-        settings.url = arguments[0];
+      var args = Array.prototype.slice.call(arguments),
+        settings;
+
+      if (typeof args[1] === "string") {
+        settings = args[2] || {};
+        settings.url = args[0];
+        settings.type = args[1];
+      } else if (typeof args[0] === "string") {
+        settings = args[1] || {};
+        settings.url = args[0];
+      } else {
+        settings = args[0] || {};
       }
+
+      settings.type = settings.type || 'GET';
+
       if (settings.success || settings.error) {
         throw new Ember.Error("ajax should use promises, received 'success' or 'error' callback");
       }

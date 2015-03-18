@@ -78,9 +78,10 @@ broccoli build dist
 ```
 
 ### defineFixture
+<hr/>
 Adding fixtures with `defineFixture` tells ic-ajax to resolve the promise
 with the fixture matching a url instead of making a request. This allows
-you to test your app without creating fake servers with sinon, etc.
+you to test your app without creating fake servers with sinon, etc. `defineFixture` will return a FixtureData object which will store data about your fixture.
 
 Example:
 
@@ -97,6 +98,39 @@ ic.ajax.request('api/v1/courses').then(function(result) {
 ```
 
 To test failure paths, set the `textStatus` to anything but `success`.
+
+You may also define the request types that this fixture will respond to, by including an array of types as an optional second argument. If there are two fixtures for the same URL, but one has a types array of `['POST', 'PUT']` while the other has none, then all calls with the type `POST` or `PUT` will match the more specific fixture, while the others will match the fixture with no types specified.
+
+Example:
+
+```js
+ic.ajax.defineFixture('api/v1/courses', ['POST', 'PUT'], {
+  response: [{name: 'Samoan Literature'}],
+  jqXHR: {},
+  textStatus: 'success'
+});
+
+ic.ajax.defineFixture('api/v1/courses', {
+  response: [{name: 'basket weaving'}],
+  jqXHR: {},
+  textStatus: 'success'
+});
+
+ic.ajax.request('api/v1/courses', 'GET').then(function(result) {
+  deepEqual(result, [{name: 'basket weaving'}]);
+});
+
+ic.ajax.request('api/v1/courses', 'POST').then(function(result) {
+  deepEqual(result, [{name: 'Samoan Literature'}]);
+});
+```
+
+*Fixtures that have request types will never match requests that do not have a matching type, while fixtures that do not define a request type will match all types. A fixture will match from most specific to least specific. A fixture that matches the exact url with query string and the request type has precedence over one that matches the query string but doesn't have a request type. These both have precedence over a "fallback" fixture that matches the path and the type, and last is a "fallback" fixture which matches the path and has no type.*
+
+#### Options
+You may pass an options object as the second argument to `defineFixture`, which may have the following properties:
+
+_fallback_ - (Boolean, optional, default: `false`)
 
 To set a fixture that will match every url with a matching path, regardless of the query string, add an options object as a parameter to `defineFixture` with a property of `fallback` set to true. A fixture will be located for the specific url with a query string, and if no fixture is found, the fallback that matches the path (not considering the query string) will be used.
 
@@ -116,14 +150,76 @@ ic.ajax.request('api/v1/courses?this=that').then(function(result) {
 });
 ```
 
+
+_onSend_ - (Function, optional)
+
+To execute a callback just before the fixture returns, pass the options object into `defineFixture` and include the callback in the `onSend` property. This callback will receive the settings object of the intercepted ajax call as its only argument.
+
+Example:
+
+```js
+var deleteCount = 0;
+
+ic.ajax.defineFixture('api/v1/courses', {
+  response: [{name: 'basket weaving'}],
+  jqXHR: {},
+  textStatus: 'success'
+}, {
+  onSend: function(settings) {
+    if (settings.type === 'Delete') {
+      deleteCount += 1;
+    }
+  }
+});
+
+// do some stuff that triggers a DELETE
+
+equal(deleteCount, 1, 'the thing was deleted');
+```
+
+####FixtureData
+
+`defineFixture` will return a FixtureData object with the following properties:
+
+_fixture_ - Object - The fixture you defined
+
+_options_ - Object - The options you passed in for the fixture
+
+_args_ - Array of Objects - The settings passed for every ajax call that matched this fixture, in the order the calls were made
+
+_callCount_ - Number - The number of times this fixture was called.
+
+_url_ - String - The url that this fixture matches
+
+These properties will stay updated as the fixture is used.
+
+Example:
+
+```js
+var fixie = ic.ajax.defineFixture('api/v1/courses', {
+  response: [{name: 'basket weaving'}],
+  jqXHR: {},
+  textStatus: 'success'
+}, {
+  fallback: true
+});
+
+ic.ajax.request('api/v1/courses?this=that').then(function(result) {
+  equal(fixie.callCount, 1);
+  deepEqual(fixie.args, {url: 'api/v1/courses?this=that'});
+});
+```
+
 ### lookupFixture
-Lookup a fixture. If successful, the fixture will be returned, otherwise `undefined` will be returned.
+<hr/>
+Lookup a fixture. If successful, a FixtureData object will be returned, otherwise `undefined` will be returned.
 
 ```js
 var coursesFixture = ic.ajax.lookupFixture('api/v1/courses');
 ```
 
 ### removeFixture
+<hr/>
 Remove a specific fixture. Pass in the url, the fixture that matches that url, if any, will be removed.
 
 ```js
@@ -131,6 +227,7 @@ ic.ajax.removeFixture('api/v1/courses');
 ```
 
 ### removeAllFixtures
+<hr/>
 
 ```js
 ic.ajax.removeAllFixtures();

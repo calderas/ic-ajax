@@ -64,7 +64,7 @@ asyncTest('pulls from fixtures', function() {
 
   ic.ajax.raw('/get').then(function(result) {
     start();
-    deepEqual(result, ic.ajax.lookupFixture('/get'));
+    deepEqual(result, ic.ajax.lookupFixture('/get').fixture);
   });
 });
 
@@ -80,8 +80,59 @@ asyncTest('uses a designated fallback fixture if no fixture is found for a reque
   ok(ic.ajax.lookupFixture('/get?this=that'));
   ic.ajax.raw('/get?this=that').then(function(result) {
     start();
-    deepEqual(result, ic.ajax.lookupFixture('/get'));
+    deepEqual(result, ic.ajax.lookupFixture('/get').fixture);
   });
+});
+
+asyncTest('pulls from a fixture that matches the request type', function() {
+  var response = { foo: 'baz' };
+
+  ic.ajax.defineFixture('/get', ['POST', 'PUT'], {
+    response: response,
+    textStatus: 'success',
+    jqXHR: {}
+  }, {
+    fallback: true
+  });
+
+  ok(ic.ajax.lookupFixture('/get?this=that', 'POST'));
+  ok(ic.ajax.lookupFixture('/get?this=that', 'PUT'));
+  ok(!ic.ajax.lookupFixture('/get?this=that', 'GET'), "does not respond to a request of another type");
+
+  ic.ajax.raw('/get?this=that', 'POST').then(function(result) {
+    deepEqual(result.response, response);
+    start();
+  });
+});
+
+asyncTest('prefers a fixture that matches the request type', function() {
+  var response1 = { foo: 'bar' },
+    response2 = { foo: 'baz' },
+    firstTest;
+
+
+  ic.ajax.defineFixture('/get', ['POST', 'PUT'], {
+    response: response1,
+    textStatus: 'success',
+    jqXHR: {}
+  });
+
+  ic.ajax.defineFixture('/get', {
+    response: response2,
+    textStatus: 'success',
+    jqXHR: {}
+  });
+
+  firstTest = ic.ajax.raw('/get', 'POST').then(function(result) {
+    deepEqual(result.response, response1);
+  });
+
+  firstTest.then(function() {
+    ic.ajax.raw('/get', 'GET').then(function(result) {
+      deepEqual(result.response, response2);
+      start();
+    });
+  })
 });
 
 asyncTest('does not use a designated fallback fixture if a fixture is found for a request matching its query string', function() {
@@ -128,7 +179,7 @@ asyncTest('rejects the promise when the textStatus of the fixture is not success
 
   start();
   ic.ajax.raw('/post').then(null, function(reason) {
-    deepEqual(reason, ic.ajax.lookupFixture('/post'));
+    deepEqual(reason, ic.ajax.lookupFixture('/post').fixture);
   });
 });
 
@@ -141,7 +192,7 @@ asyncTest('resolves the response only when not using raw', function() {
 
   ic.ajax.request('/get').then(function(result) {
     start();
-    deepEqual(result, ic.ajax.lookupFixture('/get').response);
+    deepEqual(result, ic.ajax.lookupFixture('/get').fixture.response);
   });
 });
 
@@ -215,7 +266,8 @@ asyncTest('adds onSend callback option to inspect xhr settings', function() {
   ic.ajax.defineFixture('/post', {
     response: {},
     textStatus: 'success',
-    jqXHR: {},
+    jqXHR: {}
+  }, {
     onSend: function(settings) {
       xhrRequests.push(settings);
     }
@@ -238,6 +290,50 @@ asyncTest('adds onSend callback option to inspect xhr settings', function() {
       var payload = JSON.parse(xhrRequests[0].data);
       equal(payload.foo, "bar");
     });
+});
+
+asyncTest('records callCount, args, and url to fixtureData', function() {
+
+  var fixture = ic.ajax.defineFixture('/post', {
+    response: {},
+    textStatus: 'success',
+    jqXHR: {}
+  }),
+  req1 = {
+    type: 'POST',
+    contentType: 'application/json',
+    dataType: 'json',
+    url: '/post',
+    data: JSON.stringify({
+      foo: 'bar'
+    })
+  },
+  req2 = {
+    type: 'POST',
+    contentType: 'application/json',
+    dataType: 'json',
+    url: '/post',
+    data: JSON.stringify({
+      foo: 'baz'
+    })
+  },
+  firstTest = ic.ajax.request(req1)
+    .then(function() {
+      equal(fixture.url, '/post', 'The fixture url is included with the fixture data');
+      equal(fixture.callCount, 1, 'The callCount has been incremented');
+      equal(fixture.args.length, 1, 'The args array has one set of args');
+      deepEqual(fixture.args[0], req1, 'The settings were saved to the args array');
+
+      return ic.ajax.request(req2);
+    });
+
+  firstTest.then(function() {
+    equal(fixture.callCount, 2, 'The callCount has been incremented again');
+    equal(fixture.args.length, 2, 'The args array has two sets of args');
+    deepEqual(fixture.args[1], req2, 'The new settings were saved to the args array');
+    start();
+  });
+
 });
 
 test('throws if success or error callbacks are used', function() {
