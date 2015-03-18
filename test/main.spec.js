@@ -84,6 +84,57 @@ asyncTest('uses a designated fallback fixture if no fixture is found for a reque
   });
 });
 
+asyncTest('pulls from a fixture that matches the request type', function() {
+  var response = { foo: 'baz' };
+
+  ic.ajax.defineFixture('/get', ['POST', 'PUT'], {
+    response: response,
+    textStatus: 'success',
+    jqXHR: {}
+  }, {
+    fallback: true
+  });
+
+  ok(ic.ajax.lookupFixture('/get?this=that', 'POST'));
+  ok(ic.ajax.lookupFixture('/get?this=that', 'PUT'));
+  ok(!ic.ajax.lookupFixture('/get?this=that', 'GET'), "does not respond to a request of another type");
+
+  ic.ajax.raw('/get?this=that', 'POST').then(function(result) {
+    deepEqual(result.response, response);
+    start();
+  });
+});
+
+asyncTest('prefers a fixture that matches the request type', function() {
+  var response1 = { foo: 'bar' },
+    response2 = { foo: 'baz' },
+    firstTest;
+
+
+  ic.ajax.defineFixture('/get', ['POST', 'PUT'], {
+    response: response1,
+    textStatus: 'success',
+    jqXHR: {}
+  });
+
+  ic.ajax.defineFixture('/get', {
+    response: response2,
+    textStatus: 'success',
+    jqXHR: {}
+  });
+
+  firstTest = ic.ajax.raw('/get', 'POST').then(function(result) {
+    deepEqual(result.response, response1);
+  });
+
+  firstTest.then(function() {
+    ic.ajax.raw('/get', 'GET').then(function(result) {
+      deepEqual(result.response, response2);
+      start();
+    });
+  })
+});
+
 asyncTest('does not use a designated fallback fixture if a fixture is found for a request matching its query string', function() {
   var queryStringResponse = { foo: 'baz'};
 
